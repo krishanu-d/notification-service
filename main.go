@@ -1,4 +1,3 @@
-// main.go
 package main
 
 import (
@@ -10,12 +9,15 @@ import (
 
 	"notification-service/handlers"
 	"notification-service/rabbitmq"
+	// "notification-service/services/email"
+	// "notification-service/services/fcm"
 )
 
 func main() {
 	log.Println("Starting Go Notification Microservice...")
 
 	// Create RabbitMQ connection
+	// Use constant from the new package
 	conn, err := rabbitmq.NewConnection(DefaultRabbitMQURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %s", err)
@@ -23,15 +25,19 @@ func main() {
 	defer conn.Close()
 
 	// Declare exchange
+	// Use constant from the new package
 	err = conn.DeclareExchange(ExchangeName, "topic")
 	if err != nil {
 		log.Fatalf("Failed to declare exchange: %s", err)
 	}
 
 	// Declare and bind queues
-	setupQueues(conn)
+	setupQueues(conn) // This function will also use
+	// // Initialize Email and FCM Services
+	// emailService := email.NewService()
+	// fcmService := fcm.NewService()
 
-	// Create notification handler
+	// // Create notification handler, passing the initialized services
 	notificationHandler := handlers.NewNotificationHandler()
 
 	// Create consumer
@@ -39,6 +45,7 @@ func main() {
 
 	// Start consuming from all queues
 	log.Println("Starting to consume messages...")
+	// Use from the new package
 	err = consumer.StartConsuming(VolunteerPushQueue)
 	if err != nil {
 		log.Fatalf("Failed to register volunteer push consumer: %s", err)
@@ -63,6 +70,7 @@ func main() {
 // setupQueues declares and binds all necessary queues
 func setupQueues(conn *rabbitmq.Connection) {
 	// Volunteer Push Queue
+	// Use from the new package
 	_, err := conn.DeclareQueue(VolunteerPushQueue)
 	if err != nil {
 		log.Fatalf("Failed to declare '%s': %s", VolunteerPushQueue, err)
@@ -73,17 +81,27 @@ func setupQueues(conn *rabbitmq.Connection) {
 		log.Fatalf("Failed to bind '%s' for '%s': %s", VolunteerPushQueue, RoutingKeyAppStatusChanged, err)
 	}
 
-	err = conn.BindQueue(VolunteerPushQueue, RoutingKeyAppCancelled, ExchangeName)
-	if err != nil {
-		log.Fatalf("Failed to bind '%s' for '%s': %s", VolunteerPushQueue, RoutingKeyAppCancelled, err)
-	}
+	// Removed binding for RoutingKeyAppCancelled, as it's not used by NestJS.
+	// If you later decide to use a separate routing key for application cancellations,
+	// you would add it back here and in go.
 
 	err = conn.BindQueue(VolunteerPushQueue, RoutingKeyOpportunityCreated, ExchangeName)
 	if err != nil {
 		log.Fatalf("Failed to bind '%s' for '%s': %s", VolunteerPushQueue, RoutingKeyOpportunityCreated, err)
 	}
 
+	// NEW: Bind for Opportunity Deleted and Updated
+	err = conn.BindQueue(VolunteerPushQueue, RoutingKeyOpportunityDeleted, ExchangeName)
+	if err != nil {
+		log.Fatalf("Failed to bind '%s' for '%s': %s", VolunteerPushQueue, RoutingKeyOpportunityDeleted, err)
+	}
+	err = conn.BindQueue(VolunteerPushQueue, RoutingKeyOpportunityUpdated, ExchangeName)
+	if err != nil {
+		log.Fatalf("Failed to bind '%s' for '%s': %s", VolunteerPushQueue, RoutingKeyOpportunityUpdated, err)
+	}
+
 	// NGO Email Queue
+	// Use from the new package
 	_, err = conn.DeclareQueue(NgoEmailQueue)
 	if err != nil {
 		log.Fatalf("Failed to declare '%s': %s", NgoEmailQueue, err)
@@ -94,12 +112,14 @@ func setupQueues(conn *rabbitmq.Connection) {
 		log.Fatalf("Failed to bind '%s' for '%s': %s", NgoEmailQueue, RoutingKeyApplicationNew, err)
 	}
 
-	err = conn.BindQueue(NgoEmailQueue, RoutingKeyAppCancelled, ExchangeName)
-	if err != nil {
-		log.Fatalf("Failed to bind '%s' for '%s': %s", NgoEmailQueue, RoutingKeyAppCancelled, err)
-	}
+	// Removed binding for RoutingKeyAppCancelled
+	// err = conn.BindQueue(NgoEmailQueue, RoutingKeyAppCancelled, ExchangeName)
+	// if err != nil {
+	// 	log.Fatalf("Failed to bind '%s' for '%s': %s", NgoEmailQueue, RoutingKeyAppCancelled, err)
+	// }
 
 	// NGO Push Queue
+	// Use from the new package
 	_, err = conn.DeclareQueue(NgoPushQueue)
 	if err != nil {
 		log.Fatalf("Failed to declare '%s': %s", NgoPushQueue, err)
@@ -110,10 +130,11 @@ func setupQueues(conn *rabbitmq.Connection) {
 		log.Fatalf("Failed to bind '%s' for '%s': %s", NgoPushQueue, RoutingKeyApplicationNew, err)
 	}
 
-	err = conn.BindQueue(NgoPushQueue, RoutingKeyAppCancelled, ExchangeName)
-	if err != nil {
-		log.Fatalf("Failed to bind '%s' for '%s': %s", NgoPushQueue, RoutingKeyAppCancelled, err)
-	}
+	// Removed binding for RoutingKeyAppCancelled
+	// err = conn.BindQueue(NgoPushQueue, RoutingKeyAppCancelled, ExchangeName)
+	// if err != nil {
+	// 	log.Fatalf("Failed to bind '%s' for '%s': %s", NgoPushQueue, RoutingKeyAppCancelled, err)
+	// }
 }
 
 // waitForShutdown waits for a termination signal

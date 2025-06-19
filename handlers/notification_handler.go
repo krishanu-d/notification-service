@@ -64,6 +64,14 @@ func (h *NotificationHandler) ProcessMessage(body []byte) error {
 	case "VOLUNTEER_NEW_MATCHING_OPPORTUNITY":
 		return h.handleVolunteerNewOpportunity(msg)
 
+		// --- Opportunity Management Notifications ---
+	case "OPPORTUNITY_UPDATED":
+		log.Printf("Handling Opportunity Updated: %s", msg.Payload.OpportunityTitle)
+		return h.handleOpportunityUpdate(msg)
+	case "OPPORTUNITY_DELETED":
+		log.Printf("Handling Opportunity Deleted: %s", msg.Payload.OpportunityTitle)
+		return h.handleOppotunityDeleted(msg)
+
 	default:
 		log.Printf("Unknown notification type received: %s. Raw Message: %s", msg.NotificationType, body)
 		// Consider returning an error for unhandled types in a production system
@@ -218,6 +226,72 @@ func (h *NotificationHandler) handleVolunteerNewOpportunity(msg models.Notificat
 	} else {
 		log.Printf("Skipping Email for Volunteer %s (Pref: %t, Email: %t). Type: %s",
 			msg.Recipient.UserID, msg.Recipient.Prefs.ReceiveEmail, msg.Recipient.EmailAddress != "", msg.NotificationType)
+	}
+	return nil
+}
+
+// handleOpportunityUpdate handles notifications for updates to opportunities.
+func (h *NotificationHandler) handleOpportunityUpdate(msg models.NotificationMessage) error {
+	log.Printf("Handling Opportunity Update: Type=%s, OpportunityID=%d, Title=%s",
+		msg.NotificationType, msg.Payload.OpportunityID, msg.Payload.OpportunityTitle)
+
+	title := msg.Payload.Title
+	body := msg.Payload.Body
+	subject := msg.Payload.Subject
+	deepLink := msg.Payload.DeepLink // Declared and assigned
+
+	// --- Email Logic for NGO ---
+	if msg.Recipient.Prefs.ReceiveEmail && msg.Recipient.EmailAddress != "" {
+		log.Printf("Attempting to send Email for Opportunity Update to NGO: %s - Subject: '%s'",
+			msg.Recipient.UserID, subject)
+		// TODO: Call actual Email sending function here
+	} else {
+		log.Printf("Skipping Email for NGO %s (Pref: %t, Email: %t). Type: %s",
+			msg.Recipient.UserID, msg.Recipient.Prefs.ReceiveEmail, msg.Recipient.EmailAddress != "", msg.NotificationType)
+	}
+	// --- Push Notification Logic for NGO ---
+	if msg.Recipient.Prefs.ReceivePush && msg.Recipient.DeviceToken != "" {
+		// Used deepLink in log.Printf
+		log.Printf("Attempting to send Push for Opportunity Update to NGO: %s - Title: '%s', DeepLink: '%s', Body: '%s'",
+			msg.Recipient.UserID, title, deepLink, body)
+		// TODO: Call actual FCM sending function here
+	} else {
+		log.Printf("Skipping Push for NGO %s (Pref: %t, Token: %t). Type: %s",
+			msg.Recipient.UserID, msg.Recipient.Prefs.ReceivePush, msg.Recipient.DeviceToken != "", msg.NotificationType)
+	}
+
+	return nil
+}
+
+// handleOppotunityDeleted handles notifications for deleted opportunities.
+func (h *NotificationHandler) handleOppotunityDeleted(msg models.NotificationMessage) error {
+	log.Printf("Handling Opportunity Deleted: Type=%s, OpportunityID=%d, Title=%s",
+		msg.NotificationType, msg.Payload.OpportunityID, msg.Payload.OpportunityTitle)
+
+	title := msg.Payload.Title
+	body := msg.Payload.Body
+	subject := msg.Payload.Subject
+	deepLink := msg.Payload.DeepLink // Declared and assigned
+
+	// --- Email Logic for NGO ---
+	if msg.Recipient.Prefs.ReceiveEmail && msg.Recipient.EmailAddress != "" {
+		log.Printf("Attempting to send Email for Opportunity Deletion to Volunteers: %s - Subject: '%s'",
+			msg.Recipient.UserID, subject)
+		// TODO: Call actual Email sending function here
+	} else {
+		log.Printf("Skipping Email for NGO %s (Pref: %t, Email: %t). Type: %s",
+			msg.Recipient.UserID, msg.Recipient.Prefs.ReceiveEmail, msg.Recipient.EmailAddress != "", msg.NotificationType)
+	}
+
+	// --- Push Notification Logic for Volunteers ---
+	if msg.Recipient.Prefs.ReceivePush && msg.Recipient.DeviceToken != "" {
+		// Used deepLink in log.Printf
+		log.Printf("Attempting to send Push for Opportunity Deletion to Volunteers: %s - Title: '%s', DeepLink: '%s', Body: '%s'",
+			msg.Recipient.UserID, title, deepLink, body)
+		// TODO: Call actual FCM sending function here
+	} else {
+		log.Printf("Skipping Push for NGO %s (Pref: %t, Token: %t). Type: %s",
+			msg.Recipient.UserID, msg.Recipient.Prefs.ReceivePush, msg.Recipient.DeviceToken != "", msg.NotificationType)
 	}
 	return nil
 }
